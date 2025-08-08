@@ -165,7 +165,7 @@ def main_loop_cplex(problem):
         print(f"LP relaxation lower bound: {obj:.2f}")
         print(f"Iteration count : {itr}")
 
-        # find cut : cut함수는 np.array(dtype=np.double)을 받아서, 
+        # find cut : cut함수는 1차원 fractional solution np.array(dtype=np.double)을 받아서, 
         # 무엇을 반환하냐면 : List of (indices, vals, rhs). 부등호는 무조건 greater than.
         # indices - 얘는 np.ndarray(dtype=np.int32) (1차원. coefficient 명시할 indices)
         # vals - 얘는 np.ndarray(dtype=np.double) (1차원. size는 indices와 같음. coefficient 명시)
