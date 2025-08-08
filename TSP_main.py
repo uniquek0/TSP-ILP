@@ -17,7 +17,7 @@ import cplex
 import connectivityHeuristic
 
 SOLVER = "CPLEX"
-CUTFUNCTIONS = []
+CUTFUNCTIONS = [connectivityHeuristic.paramConnHeuristic]
 
 def create_tsp_LP_relaxation(problem):
     nodes = list(problem.get_nodes())
