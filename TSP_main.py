@@ -1,10 +1,3 @@
-'''
-import math
-
-from numpy import array
-from lpsolvers import solve_lp
-print("1")
-'''
 #from lk_heuristic.utils.solver_funcs import solve
 
 import sys
@@ -15,9 +8,10 @@ from scipy.sparse import csr_matrix
 
 import cplex
 import connectivityHeuristic
+import oddComponentHeuristic
 
 SOLVER = "CPLEX"
-CUTFUNCTIONS = [connectivityHeuristic.paramConnHeuristic]
+CUTFUNCTIONS = [connectivityHeuristic.paramConnHeuristic, oddComponentHeuristic.oddCompHeuristic]
 
 def create_tsp_LP_relaxation(problem):
     nodes = list(problem.get_nodes())
@@ -99,7 +93,7 @@ def solve_cplex_model(model):
     sol = model.solution.get_values()
     iteration_count = model.solution.progress.get_num_iterations()
 
-    print("model status:", status_str)
+    #print("model status:", status_str)
 
     return obj_val, np.array(sol, dtype=np.double), iteration_count
 
@@ -154,7 +148,7 @@ def main(args):
     for arg in args: 
         print("Processing " + arg); 
         problem = tsplib95.load(arg)
-        print(f"Loaded problem with {len(list(problem.get_nodes()))} nodes.")
+        #print(f"Loaded problem with {len(list(problem.get_nodes()))} nodes.")
         main_loop_cplex(problem) if SOLVER == "CPLEX" else main_loop_highs(problem)
 
 def main_loop_cplex(problem):
@@ -163,23 +157,30 @@ def main_loop_cplex(problem):
     while True :
         obj, sol, itr = solve_cplex_model(model)
         print(f"LP relaxation lower bound: {obj:.2f}")
-        print(f"Iteration count : {itr}")
+        #print(f"Iteration count : {itr}")
 
         # find cut : cut함수는 1차원 fractional solution np.array(dtype=np.double)을 받아서, 
         # 무엇을 반환하냐면 : List of (indices, vals, rhs). 부등호는 무조건 greater than.
         # indices - 얘는 np.ndarray(dtype=np.int32) (1차원. coefficient 명시할 indices)
         # vals - 얘는 np.ndarray(dtype=np.double) (1차원. size는 indices와 같음. coefficient 명시)
         # rhs - 얘는 np.double : right hand side. 
-        cutList = []
-        for f in CUTFUNCTIONS: cutList += f(sol)
-        if len(cutList) == 0: break
+        cutList_raw = []
+        for f in CUTFUNCTIONS: cutList_raw += f(sol)
+
+        cutList = cutList_raw
+        if len(cutList) == 0: 
+            #print(f"LP relaxation lower bound: {obj:.2f}")
+            break
         for cut in cutList:
             cutinds, cutcoeffs, cutrhs = cut
             model.linear_constraints.add(
-                lin_expr=[cplex.SparsePair(ind=cutinds, val=cutcoeffs)],
+                lin_expr=[cplex.SparsePair(ind=cutinds.tolist(), val=cutcoeffs.tolist())],
                 senses=["G"],
                 rhs=[cutrhs]
             )
+
+        # Lin-kernighan heuristic to find upper bound
+            
 
 def main_loop_highs(problem):
     c, A, b, lb, ub, edges = create_tsp_LP_relaxation(problem)
